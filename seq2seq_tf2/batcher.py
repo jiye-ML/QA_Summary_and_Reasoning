@@ -16,10 +16,13 @@ def train_batch_generator(batch_size, max_enc_len=200, max_dec_len=50, sample_su
     return dataset, steps_per_epoch
 
 
-def test_batch_generator(batch_size, max_enc_len=200):
+def bream_test_batch_generator(beam_size, max_enc_len=200):
     # 加载数据集
     test_X = load_test_dataset(max_enc_len)
-    dataset = tf.data.Dataset.from_tensor_slices(test_X)
-    dataset = dataset.batch(batch_size)
-    steps_per_epoch = len(test_X) // batch_size
-    return dataset, steps_per_epoch
+    for row in test_X:
+        beam_search_data = tf.convert_to_tensor([row for i in range(beam_size)])
+        yield beam_search_data
+
+
+if __name__ == '__main__':
+    bream_test_batch_generator(4)

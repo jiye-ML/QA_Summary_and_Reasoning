@@ -3,9 +3,9 @@
 import tensorflow as tf
 
 from seq2seq_tf2.model_layers import Encoder, BahdanauAttention, Decoder
-from utils.config import save_wv_model_path
 from utils.gpu_utils import config_gpu
-from utils.wv_loader import load_embedding_matrix, get_vocab
+from utils.params_utils import get_params
+from utils.wv_loader import load_embedding_matrix, Vocab
 
 
 class Seq2Seq(tf.keras.Model):
@@ -28,7 +28,7 @@ class Seq2Seq(tf.keras.Model):
                                params["batch_size"])
 
     def call_encoder(self, enc_inp):
-        enc_hidden = self.encoder.initialize_hidden_state()  # [64, 512]
+        enc_hidden = self.encoder.initialize_hidden_state()
         enc_output, enc_hidden = self.encoder(enc_inp, enc_hidden)
         return enc_output, enc_hidden
 
@@ -47,7 +47,6 @@ class Seq2Seq(tf.keras.Model):
 
         context_vector, _ = self.attention(dec_hidden, enc_output)
 
-        # 这里使用循环是因为，每个输出单词都对应了一个 attention， 需要分别计算
         for t in range(1, dec_target.shape[1]):
             pred, dec_hidden = self.decoder(dec_input,
                                             dec_hidden,
@@ -67,10 +66,12 @@ class Seq2Seq(tf.keras.Model):
 if __name__ == '__main__':
     # GPU资源配置
     config_gpu()
+    # 获得参数
+    params = get_params()
     # 读取vocab训练
-    vocab, reverse_vocab = get_vocab(save_wv_model_path)
+    vocab = Vocab(params["vocab_path"], params["vocab_size"])
     # 计算vocab size
-    vocab_size = len(vocab)
+    vocab_size = vocab.count
     batch_size = 128
     input_sequence_len = 200
 

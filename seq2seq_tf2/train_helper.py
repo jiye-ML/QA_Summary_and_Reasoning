@@ -1,10 +1,9 @@
 # -*- coding:utf-8 -*-
 import tensorflow as tf
+
 from seq2seq_tf2.batcher import train_batch_generator
-from seq2seq_tf2.seq2seq_model import Seq2Seq
 from utils.config import save_wv_model_path
 from utils.gpu_utils import config_gpu
-from utils.wv_loader import get_vocab
 import time
 
 
@@ -12,44 +11,36 @@ def train_model(model, vocab, params, checkpoint_manager):
     epochs = params['epochs']
     batch_size = params['batch_size']
 
-    pad_index = vocab['<PAD>']
-    nuk_index = vocab['<UNK>']
-    start_index = vocab['<START>']
+    pad_index = vocab.word2id[vocab.PAD_TOKEN]
+    start_index = vocab.word2id[vocab.START_DECODING]
 
     # 计算vocab size
-    params['vocab_size'] = len(vocab)
+    params['vocab_size'] = vocab.count
 
-    optimizer = tf.keras.optimizers.Adam(name='Adam', learning_rate=0.001)
+    optimizer = tf.keras.optimizers.Adam(name='Adam', learning_rate=0.01)
     loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
 
     # 定义损失函数
     def loss_function(real, pred):
-        pad_mask = tf.math.equal(real, pad_index)
-        nuk_mask = tf.math.equal(real, nuk_index)
-        mask = tf.math.logical_not(tf.math.logical_or(pad_mask, nuk_mask))
+        mask = tf.math.logical_not(tf.math.equal(real, pad_index))
         loss_ = loss_object(real, pred)
         mask = tf.cast(mask, dtype=loss_.dtype)
         loss_ *= mask
-
         return tf.reduce_mean(loss_)
 
     # 训练
-    @tf.function
+    # @tf.function(input_signature=(tf.TensorSpec(shape=[params["batch_size"], params["max_enc_len"]], dtype=tf.int64),
+    #                               tf.TensorSpec(shape=[params["batch_size"], params["max_dec_len"]], dtype=tf.int64)))
     def train_step(enc_inp, dec_target):
         batch_loss = 0
         with tf.GradientTape() as tape:
-            print('enc_inp is ', enc_inp)
             enc_output, enc_hidden = model.call_encoder(enc_inp)
-            print('enc_hidden is ', enc_hidden)
-            print('enc_output is ', enc_output)
             # 第一个decoder输入 开始标签
             dec_input = tf.expand_dims([start_index] * batch_size, 1)
             # 第一个隐藏层输入
             dec_hidden = enc_hidden
             # 逐个预测序列
-            print('dec_target is ', dec_target)
             predictions, _ = model(dec_input, dec_hidden, enc_output, dec_target)
-            print('predictions is ', predictions)
 
             batch_loss = loss_function(dec_target[:, 1:], predictions)
 
@@ -66,7 +57,7 @@ def train_model(model, vocab, params, checkpoint_manager):
     for epoch in range(epochs):
         start = time.time()
         total_loss = 0
-        # inputs.shape = [32, 200], target.shape = [32, 41]
+
         for (batch, (inputs, target)) in enumerate(dataset.take(steps_per_epoch)):
             batch_loss = train_step(inputs, target)
             total_loss += batch_loss

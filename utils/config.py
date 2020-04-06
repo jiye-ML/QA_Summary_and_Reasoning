@@ -31,6 +31,10 @@ merger_seg_path = os.path.join(root, 'data', 'merged_train_test_seg_data.csv')
 # 1. 数据标签分离
 train_x_seg_path = os.path.join(root, 'data', 'train_X_seg_data.csv')
 train_y_seg_path = os.path.join(root, 'data', 'train_Y_seg_data.csv')
+
+val_x_seg_path = os.path.join(root, 'data', 'val_X_seg_data.csv')
+val_y_seg_path = os.path.join(root, 'data', 'val_Y_seg_data.csv')
+
 test_x_seg_path = os.path.join(root, 'data', 'test_X_seg_data.csv')
 
 # 2. pad oov处理后的数据
@@ -55,7 +59,7 @@ reverse_vocab_path = os.path.join(root, 'data', 'wv', 'reverse_vocab.txt')
 wv_train_epochs = 10
 
 # 模型保存文件夹
-checkpoint_dir = os.path.join(root, 'data', 'checkpoints', 'training_checkpoints_mask_loss_dim500_seq')
+checkpoint_dir = os.path.join(root, 'data', 'checkpoints', 'training_checkpoints_seq2seq')
 
 checkpoint_prefix = os.path.join(checkpoint_dir, 'ckpt')
 
@@ -63,4 +67,13 @@ checkpoint_prefix = os.path.join(checkpoint_dir, 'ckpt')
 save_result_dir = os.path.join(root, 'result')
 
 # 词向量维度
-embedding_dim = 500
+embedding_dim = 300
+
+sample_total = 82871
+
+batch_size = 3
+
+
+epochs = 5
+
+vocab_size = 31625

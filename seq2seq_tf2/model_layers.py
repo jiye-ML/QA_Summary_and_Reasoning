@@ -3,7 +3,8 @@
 
 from utils.config import save_wv_model_path
 from utils.gpu_utils import config_gpu
-from utils.wv_loader import get_vocab, load_word2vec_file
+from utils.params_utils import get_params
+from utils.wv_loader import load_word2vec_file, Vocab
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import GRU, Input, Dense, TimeDistributed, Activation, RepeatVector, Bidirectional
 from tensorflow.keras.layers import Embedding
@@ -26,7 +27,7 @@ class Encoder(tf.keras.Model):
 
     def call(self, x, hidden):
         x = self.embedding(x)
-        output, state = self.gru(x, initial_state=hidden)  # TensorShape([64, 250, 1024]), TensorShape([64, 1024])
+        output, state = self.gru(x, initial_state=hidden)
         return output, state
 
     def initialize_hidden_state(self):
@@ -36,9 +37,9 @@ class Encoder(tf.keras.Model):
 class BahdanauAttention(tf.keras.layers.Layer):
     def __init__(self, units):
         super(BahdanauAttention, self).__init__()
-        self.W1 = tf.keras.layers.Dense(units)  # [10]
-        self.W2 = tf.keras.layers.Dense(units)  # [10]
-        self.V = tf.keras.layers.Dense(1)  # [1]
+        self.W1 = tf.keras.layers.Dense(units)
+        self.W2 = tf.keras.layers.Dense(units)
+        self.V = tf.keras.layers.Dense(1)
 
     def call(self, query, values):
         # query为上次的GRU隐藏层
@@ -53,10 +54,9 @@ class BahdanauAttention(tf.keras.layers.Layer):
         # score shape == (batch_size, max_length, 1)
         # we get 1 at the last axis because we are applying score to self.V
         # the shape of the tensor before applying self.V is (batch_size, max_length, units)
-        # 计算注意力权重值, 输入的每个词对应一个分数
+        # 计算注意力权重值
         score = self.V(tf.nn.tanh(
-            self.W1(values) + self.W2(hidden_with_time_axis)
-        ))
+            self.W1(values) + self.W2(hidden_with_time_axis)))
 
         # attention_weights sha== (batch_size, max_length, 1)
         attention_weights = tf.nn.softmax(score, axis=1)
@@ -87,20 +87,20 @@ class Decoder(tf.keras.Model):
         # enc_output shape == (batch_size, max_length, hidden_size)
 
         # x shape after passing through embedding == (batch_size, 1, embedding_dim)
-        x = self.embedding(x)  # [64, 500]
+        x = self.embedding(x)
 
         # 将上一循环的预测结果跟注意力权重值结合在一起作为本次的GRU网络输入
         # x shape after concatenation == (batch_size, 1, embedding_dim + hidden_size)
-        x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)  # [64, 1, 1024] + [64, 1, 500] == [64, 1, 1524]
+        x = tf.concat([tf.expand_dims(context_vector, 1), x], axis=-1)
 
         # passing the concatenated vector to the GRU
-        output, state = self.gru(x)  # [64, 1, 1024], [64, 1024]
+        output, state = self.gru(x)
 
         # output shape == (batch_size * 1, hidden_size)
-        output = tf.reshape(output, (-1, output.shape[2]))  # [64, 1024]
+        output = tf.reshape(output, (-1, output.shape[2]))
 
         # output shape == (batch_size, vocab)
-        prediction = self.fc(output)  # [64, 31818]
+        prediction = self.fc(output)
 
         return prediction, state
 
@@ -108,10 +108,12 @@ class Decoder(tf.keras.Model):
 if __name__ == '__main__':
     # GPU资源配置
     config_gpu()
+    # 获得参数
+    params = get_params()
     # 读取vocab训练
-    vocab, reverse_vocab = get_vocab(save_wv_model_path)
+    vocab = Vocab(params["vocab_path"], params["vocab_size"])
     # 计算vocab size
-    vocab_size = len(vocab)
+    vocab_size = vocab.count
     # 使用GenSim训练好的embedding matrix
     embedding_matrix = load_word2vec_file(save_wv_model_path)
 
