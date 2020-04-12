@@ -76,4 +76,4 @@ batch_size = 3
 
 epochs = 5
 
-vocab_size = 31625
+vocab_size = 31626

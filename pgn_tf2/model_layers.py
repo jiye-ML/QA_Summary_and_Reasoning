@@ -69,11 +69,7 @@ class BahdanauAttention(tf.keras.layers.Layer):
             # Multiply coverage vector by w_c to get coverage_features.
             # self.W_s(values) [batch_sz, max_len, units] self.W_h(hidden_with_time_axis) [batch_sz, 1, units]
             # self.W_c(prev_coverage) [batch_sz, max_len, units]  score [batch_sz, max_len, 1]
-            score = self.V(tf.nn.tanh(
-                self.W_s(enc_output) +
-                self.W_h(hidden_with_time_axis) +
-                self.W_c(prev_coverage)
-            ))
+            score = self.V(tf.nn.tanh(self.W_s(enc_output) + self.W_h(hidden_with_time_axis) + self.W_c(prev_coverage)))
             # attention_weights shape (batch_size, max_len, 1)
 
             # attention_weights sha== (batch_size, max_length, 1)

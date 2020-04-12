@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     params = defaultdict()
     params["vocab_size"] = vocab_size
-    params["embed_size"] = 500
+    params["embed_size"] = 300
     params["enc_units"] = 512
     params["attn_units"] = 512
     params["dec_units"] = 512
@@ -203,12 +203,7 @@ if __name__ == '__main__':
     print('Encoder output shape: (batch size, sequence length, units) {}'.format(enc_output.shape))
     print('Encoder Hidden state shape: (batch size, units) {}'.format(enc_hidden.shape))
 
-    context_vector, attention_weights, coverage = model.attention(
-        enc_hidden,
-        enc_output,
-        enc_pad_mask,
-        use_coverage=True
-    )
+    context_vector, attention_weights, coverage = model.attention(enc_hidden, enc_output, enc_pad_mask)
 
     print("Attention context_vector shape: (batch size, units) {}".format(context_vector.shape))
     print("Attention weights shape: (batch_size, sequence_length, 1) {}".format(attention_weights.shape))

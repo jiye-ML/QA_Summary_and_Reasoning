@@ -6,8 +6,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 
 def tokenize(lang):
-    lang_tokenizer = Tokenizer(
-        filters='')
+    lang_tokenizer = Tokenizer(filters='')
     lang_tokenizer.fit_on_texts(lang)
 
     tensor = lang_tokenizer.texts_to_sequences(lang)

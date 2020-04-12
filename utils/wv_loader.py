@@ -6,7 +6,7 @@ import codecs
 # 引入日志配置
 import logging
 
-from utils.config import embedding_matrix_path, vocab_path
+from utils.config import embedding_matrix_path, vocab_path, save_wv_model_path
 
 
 # SENTENCE_START = '<s>'
@@ -69,19 +69,16 @@ class Vocab:
         return self.count
 
 
-def get_vocab(save_wv_model_path):
-    # 保存词向量模型
-    wv_model = Word2Vec.load(save_wv_model_path)
-    reverse_vocab = {index: word for index, word in enumerate(wv_model.wv.index2word)}
-    vocab = {word: index for index, word in enumerate(wv_model.wv.index2word)}
-    return vocab, reverse_vocab
-
-
 def load_embedding_matrix(filepath=embedding_matrix_path):
     """
     加载 embedding_matrix_path
     """
     return np.load(filepath + '.npy')
+
+
+def load_word2vec_file():
+    # 保存词向量模型
+    return Word2Vec.load(save_wv_model_path)
 
 
 if __name__ == '__main__':

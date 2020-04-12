@@ -91,7 +91,7 @@ def get_default_params():
               "cov_loss_wt": 1.0,
 
               "max_grad_norm": 2.0,
-              "vocab_size": 31820,
+              "vocab_size": 31625,
 
               "beam_size": batch_size,
               "embed_size": 300,

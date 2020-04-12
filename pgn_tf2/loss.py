@@ -70,8 +70,10 @@ def _coverage_loss(attn_dists, padding_mask):
     Returns:
       coverage_loss: scalar
     """
-    coverage = tf.zeros_like(attn_dists[0])  # shape (batch_size, attn_length). Initial coverage is zero.
-    covlosses = []  # Coverage loss per decoder timestep. Will be list length max_dec_steps containing shape (batch_size).
+    # shape (batch_size, attn_length). Initial coverage is zero.
+    coverage = tf.zeros_like(attn_dists[0])
+    # Coverage loss per decoder timestep. Will be list length max_dec_steps containing shape (batch_size).
+    covlosses = []
     for a in attn_dists:
         covloss = tf.reduce_sum(tf.minimum(a, coverage), [1])  # calculate the coverage loss for this step
         covlosses.append(covloss)

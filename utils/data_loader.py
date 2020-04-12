@@ -7,15 +7,17 @@ from utils.file_utils import save_dict
 from utils.multi_proc_utils import parallelize
 from utils.config import train_seg_path, test_seg_path, merger_seg_path, user_dict, train_x_seg_path, test_x_seg_path, \
     train_x_pad_path, train_y_pad_path, test_x_pad_path, wv_train_epochs, embedding_matrix_path, \
-    vocab_path, reverse_vocab_path, train_x_path, train_y_path, test_x_path, embedding_dim
+    vocab_path, reverse_vocab_path, train_x_path, train_y_path, test_x_path, embedding_dim, train_y_seg_path, \
+    val_x_seg_path, val_y_seg_path
 from utils.config import stop_word_path, train_data_path, test_data_path
 from gensim.models.word2vec import LineSentence, Word2Vec
 import numpy as np
 # 引入日志配置
 import logging
+from utils.config import save_wv_model_path
+from sklearn.model_selection import train_test_split
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-from utils.config import save_wv_model_path
 
 # 自定义词表
 jieba.load_userdict(user_dict)
@@ -39,9 +41,6 @@ def build_dataset(train_data_path, test_data_path):
     train_df.fillna('', inplace=True)
     test_df.fillna('', inplace=True)
 
-    # train_df.dropna(subset=['Question', 'Dialogue', 'Report'], how='any', inplace=True)
-    # test_df.dropna(subset=['Question', 'Dialogue'], how='any', inplace=True)
-
     # 3.多线程, 批量数据处理
     train_df = parallelize(train_df, sentences_proc)
     test_df = parallelize(test_df, sentences_proc)
@@ -57,8 +56,9 @@ def build_dataset(train_data_path, test_data_path):
     # 5.保存处理好的 训练 测试集合
     train_df = train_df.drop(['merged'], axis=1)
     test_df = test_df.drop(['merged'], axis=1)
-    train_df.to_csv(train_seg_path, index=None, header=True)
-    test_df.to_csv(test_seg_path, index=None, header=True)
+
+    train_df.to_csv(train_seg_path, index=None, header=False)
+    test_df.to_csv(test_seg_path, index=None, header=False)
 
     # 6. 保存合并数据
     merged_df.to_csv(merger_seg_path, index=None, header=False)
@@ -76,6 +76,18 @@ def build_dataset(train_data_path, test_data_path):
     # 8. 分离数据和标签
     train_df['X'] = train_df[['Question', 'Dialogue']].apply(lambda x: ' '.join(x), axis=1)
     test_df['X'] = test_df[['Question', 'Dialogue']].apply(lambda x: ' '.join(x), axis=1)
+
+    # 训练集 验证集划分
+    X_train, X_val, y_train, y_val = train_test_split(train_df['X'], train_df['Report'],
+                                                      test_size=0.002,  # 8W*0.002
+                                                      random_state=42)
+
+    X_train.to_csv(train_x_seg_path, index=None, header=False)
+    y_train.to_csv(train_y_seg_path, index=None, header=False)
+    X_val.to_csv(val_x_seg_path, index=None, header=False)
+    y_val.to_csv(val_y_seg_path, index=None, header=False)
+
+    test_df['X'].to_csv(test_x_seg_path, index=None, header=False)
 
     # 9. 填充开始结束符号,未知词填充 oov, 长度填充
     # 使用GenSim训练得出的vocab
@@ -102,13 +114,17 @@ def build_dataset(train_data_path, test_data_path):
     train_df['Y'].to_csv(train_y_pad_path, index=None, header=False)
     test_df['X'].to_csv(test_x_pad_path, index=None, header=False)
 
+    print('train_x_max_len:{} ,train_y_max_len:{}'.format(X_max_len, train_y_max_len))
+
     # 11. 词向量再次训练
     print('start retrain w2v model')
     wv_model.build_vocab(LineSentence(train_x_pad_path), update=True)
     wv_model.train(LineSentence(train_x_pad_path), epochs=1, total_examples=wv_model.corpus_count)
+
     print('1/3')
     wv_model.build_vocab(LineSentence(train_y_pad_path), update=True)
     wv_model.train(LineSentence(train_y_pad_path), epochs=1, total_examples=wv_model.corpus_count)
+
     print('2/3')
     wv_model.build_vocab(LineSentence(test_x_pad_path), update=True)
     wv_model.train(LineSentence(test_x_pad_path), epochs=1, total_examples=wv_model.corpus_count)
@@ -145,7 +161,6 @@ def build_dataset(train_data_path, test_data_path):
     np.save(train_x_path, train_X)
     np.save(train_y_path, train_Y)
     np.save(test_x_path, test_X)
-
     return train_X, train_Y, test_X
 
 
@@ -267,8 +282,8 @@ def clean_sentence(sentence):
     '''
     if isinstance(sentence, str):
         return re.sub(
-            # r'[\s+\-\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好',
-            r'[\s+\-\/\[\]\{\}_$%^*(+\"\')]+|[+——()【】“”~@#￥%……&*（）]+|你好|您好',
+            # r'[\s+\-\/\[\]\{\}_$%^*(+\"\')]+|[+——()【】“”~@#￥%……&*（）]+|你好|您好',
+            r'[\s+\-\!\/\[\]\{\}_,.$%^*(+\"\')]+|[:：+——()?【】“”！，。？、~@#￥%……&*（）]+|车主说|技师说|语音|图片|你好|您好',
             ' ', sentence)
     else:
         return ' '
@@ -285,7 +300,6 @@ def filter_words(sentence):
     words = [word for word in words if word]
     # 去掉停用词 包括一下标点符号也会去掉
     words = [word for word in words if word not in stop_words]
-
     return words
 
 
@@ -311,10 +325,9 @@ def sentence_proc(sentence):
     '''
     # 清除无用词
     sentence = clean_sentence(sentence)
-
+    # 分段切词
     sentence = seg_proc(sentence)
-
-    # # 过滤停用词
+    # 过滤停用词
     words = filter_words(sentence)
     # 拼接成一个字符串,按空格分隔
     return ' '.join(words)
@@ -332,7 +345,6 @@ def sentences_proc(df):
 
     if 'Report' in df.columns:
         # 训练集 Report 预处理
-        # df['Report'] = df['Report'].apply(lambda x: sentence_proc(x, is_clean=False))
         df['Report'] = df['Report'].apply(sentence_proc)
     return df
 

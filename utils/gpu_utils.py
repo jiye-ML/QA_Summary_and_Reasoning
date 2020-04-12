@@ -13,7 +13,7 @@ def config_gpu(use_cpu=False):
             try:
                 tf.config.experimental.set_virtual_device_configuration(
                     gpus[0],
-                    [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=5120)])
+                    [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=8000)])
                 logical_gpus = tf.config.experimental.list_logical_devices('GPU')
                 print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
 
